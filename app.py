@@ -210,48 +210,6 @@ def suggest_data_cleaning(df: pd.DataFrame) -> Dict[str, Any]:
     
     return suggestions
 
-def suggest_data_transformations(df: pd.DataFrame) -> Dict[str, Any]:
-    """Generate AI-powered suggestions for data transformations."""
-    suggestions = {
-        'transformations': {},
-        'recommendations': []
-    }
-    
-    numeric_columns = df.select_dtypes(include=['number']).columns
-    for column in numeric_columns:
-        suggestions['transformations'][column] = ['Normalization', 'Standardization', 'Log Transformation']
-        suggestions['recommendations'].append(f"Consider applying transformations to '{column}' for better analysis.")
-    
-    return suggestions
-
-def check_data_quality(df: pd.DataFrame) -> Dict[str, Any]:
-    """Check for data quality issues."""
-    quality_issues = {
-        'duplicates': df.duplicated().sum(),
-        'invalid_values': {},
-        'consistency_issues': [],
-        'recommendations': []
-    }
-    
-    # Check for invalid values (e.g., negative values in columns that should only have positive values)
-    for column in df.columns:
-        if df[column].dtype in ['int64', 'float64']:
-            if (df[column] < 0).any():
-                quality_issues['invalid_values'][column] = 'Contains negative values'
-                quality_issues['recommendations'].append(f"Column '{column}' contains negative values. Consider handling them.")
-    
-    # Check for consistency issues (e.g., mismatched data types)
-    for column in df.columns:
-        if df[column].dtype == 'object':
-            try:
-                pd.to_datetime(df[column], errors='raise')
-            except:
-                if df[column].str.match(r'^-?\d*\.?\d+$').all():
-                    quality_issues['consistency_issues'].append(f"Column '{column}' contains numeric values stored as strings.")
-                    quality_issues['recommendations'].append(f"Column '{column}' contains numeric values stored as strings. Consider converting to numeric type.")
-    
-    return quality_issues
-
 # Add language support
 LANGUAGES = {
     'English': {
@@ -342,7 +300,7 @@ def main():
             # Create tabs for different operations
             tabs = st.tabs([
                 "Data Preview", "Cleaning", "Analysis",
-                "Visualization", "Filtering", "Export", "Merge"
+                "Visualization", "Filtering", "Export"
             ])
             
             with tabs[0]:
@@ -352,6 +310,9 @@ def main():
             
             with tabs[1]:
                 st.subheader("Data Cleaning")
+                
+                # Initialize suggestions variable
+                suggestions = {}
                 
                 # AI Suggestions Section
                 st.subheader("🤖 AI Suggestions")
@@ -439,50 +400,6 @@ def main():
                             df = convert_column_types(df, {col_to_convert: new_type})
                         st.session_state.dataframes[file.name] = df
                         st.success("Changes applied successfully!")
-                
-                # Data Transformation Suggestions
-                st.subheader("Data Transformation Suggestions")
-                if st.checkbox("Show AI-powered transformation suggestions"):
-                    transformations = suggest_data_transformations(df)
-                    
-                    # Display recommendations
-                    st.write("### 📋 Transformation Recommendations:")
-                    for rec in transformations['recommendations']:
-                        st.info(rec)
-                    
-                    # Display detailed transformation suggestions
-                    if transformations['transformations']:
-                        with st.expander("🔄 Transformation Suggestions"):
-                            st.write("Suggested transformations for your dataset:")
-                            for col, trans in transformations['transformations'].items():
-                                st.write(f"**{col}:** {', '.join(trans)}")
-                
-                # Data Quality Checks
-                st.subheader("Data Quality Checks")
-                if st.checkbox("Show Data Quality Checks"):
-                    quality_issues = check_data_quality(df)
-                    
-                    # Display quality issues
-                    st.write("### 📋 Data Quality Issues:")
-                    if quality_issues['duplicates'] > 0:
-                        st.warning(f"Found {quality_issues['duplicates']} duplicate rows.")
-                    
-                    if quality_issues['invalid_values']:
-                        with st.expander("🔍 Invalid Values"):
-                            st.write("Columns with invalid values:")
-                            for col, issue in quality_issues['invalid_values'].items():
-                                st.write(f"**{col}:** {issue}")
-                    
-                    if quality_issues['consistency_issues']:
-                        with st.expander("🔄 Consistency Issues"):
-                            st.write("Columns with consistency issues:")
-                            for issue in quality_issues['consistency_issues']:
-                                st.write(f"- {issue}")
-                    
-                    # Display recommendations
-                    st.write("### 📋 Quality Recommendations:")
-                    for rec in quality_issues['recommendations']:
-                        st.info(rec)
 
             with tabs[2]:
                 st.subheader("Data Analysis")
@@ -614,32 +531,7 @@ def main():
                         file_name=f"processed_data{file_ext}",
                         mime=mime_type
                     )
-
-            with tabs[6]:
-                st.subheader("Data Merging and Joining")
-                
-                # Select datasets to merge
-                datasets = list(st.session_state.dataframes.keys())
-                left_dataset = st.selectbox("Select left dataset", datasets)
-                right_dataset = st.selectbox("Select right dataset", datasets)
-                
-                if left_dataset and right_dataset:
-                    left_df = st.session_state.dataframes[left_dataset]
-                    right_df = st.session_state.dataframes[right_dataset]
-                    
-                    # Select columns to join on
-                    left_on = st.selectbox("Select left join column", left_df.columns)
-                    right_on = st.selectbox("Select right join column", right_df.columns)
-                    
-                    # Select join type
-                    join_type = st.selectbox("Select join type", ["inner", "outer", "left", "right"])
-                    
-                    if st.button("Merge Datasets"):
-                        merged_df = pd.merge(left_df, right_df, left_on=left_on, right_on=right_on, how=join_type)
-                        st.session_state.dataframes[f"{left_dataset}_{right_dataset}_merged"] = merged_df
-                        st.success("Datasets merged successfully!")
-                        st.dataframe(merged_df.head())
-
+        
         st.success(texts['success'])  # Display success message when all files are processed
 
 if __name__ == "__main__":
